@@ -1,0 +1,13 @@
+train: ../my_dataset/dataset_3/train/images
+val: ../my_dataset/dataset_3/valid/images
+#test: ../test/images
+
+nc: 6
+names: ['bus', 'car', 'motorbike', 'threewheel', 'truck', 'van']
+
+#roboflow:
+#  workspace: jahn
+#  project: cartypes-zywky
+#  version: 1
+#  license: CC BY 4.0
+#  url: https://universe.roboflow.com/jahn/cartypes-zywky/dataset/1
