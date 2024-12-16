@@ -10,15 +10,14 @@ from yolov5 import train
 
 def train_model():
     train.run(
-        data='my_dataset/dataset_3/data.yaml',
+        data='dataset/data.yaml',
         cfg='models/pre/yolov5s.yaml',
         weights='models/pre/yolov5s.pt',
         batch_size=16,
         epochs=100,
         img_size=640,
         project='runs/train',
-        name='exp4',
-        save_dir='models/exp4.pt'  # 保存模型的位置
+        name='exp4'
     )
 
 if __name__ == '__main__':
