@@ -1,0 +1,89 @@
+/* style.css */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+}
+
+.container {
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
+    margin-top: 20px;
+    padding: 20px;
+}
+
+.left-panel, .right-panel {
+    width: 45%;
+    padding: 20px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+h3, h4 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.upload-input {
+    margin-bottom: 20px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.upload-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    font-size: 1.2rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.upload-btn:hover {
+    background-color: #45a049;
+}
+
+.preview-image, .preview-video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* 保持图片或视频的纵横比 */
+    margin-top: 10px;
+}
+
+.image-preview, .video-preview {
+    max-width: 100%;
+    max-height: 400px; /* 设置最大高度来防止溢出 */
+    overflow: hidden;
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.download-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    font-size: 1.2rem;
+    background-color: #4CAF50;
+    color: white;
+    text-align: center;
+    margin-top: 20px;
+    text-decoration: none;
+}
+
+.download-btn:hover {
+    background-color: #45a049;
+}

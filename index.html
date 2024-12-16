@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image/Video Upload and Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧上传区域 -->
+        <div class="left-panel">
+            <h3>上传文件</h3>
+            <form action="/" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" accept="image/*, video/*" class="upload-input" id="fileInput">
+                <button type="submit" class="upload-btn">上传并处理</button>
+            </form>
+
+            <!-- 图片或视频预览 -->
+            <div id="previewContainer">
+                {% if image_preview %}
+                    <h4>图片预览</h4>
+                    <div class="image-preview">
+                        <img src="{{ image_preview }}" alt="Image Preview" class="preview-image">
+                    </div>
+                {% elif video_preview %}
+                    <h4>视频预览</h4>
+                    <div class="video-preview">
+                        <video controls class="preview-video">
+                            <source src="{{ video_preview }}" type="video/mp4">
+                            您的浏览器不支持视频播放。
+                        </video>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 右侧识别结果 -->
+        <div class="right-panel">
+            {% if result_filename %}
+                <h3>识别结果</h3>
+
+                <!-- 如果是图片 -->
+                {% if result_filename.endswith(('jpg', 'jpeg', 'png')) %}
+                    <div class="image-preview">
+                        <img src="{{ url_for('send_output', filename=result_filename) }}" alt="Detection Result" class="preview-image">
+                    </div>
+                    <a href="{{ url_for('send_output', filename=result_filename) }}" download class="download-btn">下载处理后的图片</a>
+
+                <!-- 如果是视频 -->
+                {% elif result_filename.endswith('mp4') %}
+                    <div class="video-preview">
+                        <video controls class="preview-video">
+                            <source src="{{ url_for('send_output', filename=result_filename) }}" type="video/mp4">
+                            您的浏览器不支持视频播放。
+                        </video>
+                    </div>
+                    <a href="{{ url_for('send_output', filename=result_filename) }}" download class="download-btn">下载处理后的视频</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
