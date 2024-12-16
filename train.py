@@ -1,7 +1,7 @@
 import torch
 import os
 import sys
-# 将工作目录切换到项目根目录
+# 将工作目录切换到项目根目录 自行填写项目路径
 os.chdir('C:/CodeProjects/CarDetection')
 
 # 添加 yolov5 到 Python 路径
