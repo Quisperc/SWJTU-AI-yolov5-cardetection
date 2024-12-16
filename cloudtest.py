@@ -6,6 +6,12 @@ import cv2
 import shutil
 import sys
 
+import platform
+import pathlib
+plt = platform.system()
+if plt != 'Windows':
+  pathlib.WindowsPath = pathlib.PosixPath
+
 # 切换工作目录到脚本所在位置
 current_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(current_dir)
