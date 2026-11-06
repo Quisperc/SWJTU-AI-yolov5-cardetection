@@ -74,8 +74,11 @@ git show 59cc558:models/exp4.pt > models/exp4.pt
 本次处理：
 
 1. 以归档后的干净工作区创建一次提交，把**全部代码与文档**首次纳入版本控制；
-2. 用 `git merge -s ours` 合入 `origin/main`，保留远端历史、**不做 force push**；
-3. 推送到 `main`，使当前文件树变为「纯代码 + 文档」，`exp4.pt` 从当前树移除。
+2. 以 `origin/main` 的最后一个提交 `59cc558` 为**父提交**创建归档提交，并快进更新
+   `main` 引用 —— 远端已有的 29 个历史提交全部保留，**不做 force push**；
+3. 归档时本机的 HTTPS Git 通道被网络策略拦截（代理 CONNECT 502 / 直连超时），
+   因此这一步通过 GitHub Git Data API 完成（以远端 HEAD 为父创建 tree + commit + 更新 ref），
+   效果与 `git push` 等价；当前文件树变为「纯代码 + 文档」，`exp4.pt` 已从当前树移除。
 
 **注意**：`exp4.pt` 的 blob 仍存在于历史对象中（约 14 MB），仓库 `size` 不会立刻下降。
 若确需从历史彻底抹除，可执行（会**重写全部提交的 SHA**，需要 force push，
@@ -85,6 +88,10 @@ git show 59cc558:models/exp4.pt > models/exp4.pt
 git filter-repo --path models/exp4.pt --invert-paths
 git push --force --all origin
 ```
+
+**本地与远端**：远端 `main` 是最终交付版本。若本机 Git 网络恢复，执行
+`git fetch origin main && git reset --hard origin/main` 即可让本地分支与远端历史完全一致
+（归档内容相同，仅提交对象不同）。
 
 仓库已不再维护，可在确认无误后于 GitHub 设为只读归档（本次未擅自执行）：
 
