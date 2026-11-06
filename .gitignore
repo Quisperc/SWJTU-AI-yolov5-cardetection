@@ -1,0 +1,63 @@
+# ============================================================================
+# 车辆检测系统 - 忽略规则
+# 原则：仓库只保留「代码 + 文档 + 配置模板」，任何运行态产物都不入库。
+# ============================================================================
+
+# --- 数据集 / 训练输出 / 检测结果 ---
+/my_dataset/
+/data/
+/runs/
+/input/*
+!/input/.gitkeep
+/output/*
+!/output/.gitkeep
+/models/*
+!/models/.gitkeep
+
+# --- 模型权重与缓存（任意层级） ---
+*.pt
+*.pth
+*.onnx
+*.engine
+*.torchscript
+*.tflite
+*.weights
+*.cache
+
+# --- 数据集与权重备份包（体积大、可从来源重新获取） ---
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+
+# --- 本地配置（可能含密钥 / 机器路径） ---
+.env
+!.env.example
+configs/data.yaml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- IDE / 操作系统 ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Flask / 日志 ---
+instance/
+*.log

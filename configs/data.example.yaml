@@ -1,0 +1,22 @@
+# YOLOv5 数据集描述模板
+# 用法：复制为 configs/data.yaml，然后按实际数据集路径修改。
+#
+# path 由 YOLOv5 按「相对 yolov5/ 源码目录」解析（这是上游约定），
+# 因此 ../data 实际指向项目根目录下的 data/。
+# 如果训练时提示找不到数据集，最省事的做法是改成绝对路径，例如：
+#   path: C:/Code/CarDetection/data
+#
+# 目录结构要求：
+#   data/
+#   ├── train/images/*.jpg
+#   ├── train/labels/*.txt   # 与图片同名，YOLO 格式：cls cx cy w h（归一化 0~1）
+#   ├── valid/images/*.jpg
+#   └── valid/labels/*.txt
+
+path: ../data
+train: train/images
+val: valid/images
+
+# nc 必须与 names 长度一致，且类别顺序必须与标注中的 class id 一致
+nc: 6
+names: ['bus', 'car', 'motorbike', 'threewheel', 'truck', 'van']

@@ -1,0 +1,39 @@
+# 车辆检测系统 - Python 依赖
+# 推荐 Python 3.9 / 3.10；不建议使用 3.12+（原因见下方说明）
+# 安装：pip install -r requirements.txt
+#
+# 版本约束的原因（改动前请先读）：
+#  - yolov5/utils/general.py 依赖 pkg_resources，setuptools>=81 已移除该模块，故锁 <81；
+#  - yolov5/models/common.py 与 general.py 在找不到 ultralytics 时会自动执行
+#    `pip install -U ultralytics`（运行时联网装包，容易卡住或破坏环境），
+#    因此这里预装固定版本；
+#  - numpy 2.x 与本项目可用的老版 torch / pandas 不兼容，故限定 <2；
+#  - GPU 用户请先按 https://pytorch.org/get-started/locally/ 安装对应 CUDA 版 torch /
+#    torchvision，再执行本文件（pip 会保留已满足约束的版本）。
+
+# --- 深度学习核心 ---
+torch>=1.13,<2.5
+torchvision>=0.14,<0.20
+numpy>=1.23,<2.0
+
+# --- 图像 / 视频 ---
+opencv-python>=4.7,<5.0
+Pillow>=9.5,<11.0
+
+# --- YOLOv5 vendor 源码依赖 ---
+PyYAML>=5.3,<7
+requests>=2.28
+scipy>=1.9
+pandas>=1.5,<2.3
+seaborn>=0.12
+matplotlib>=3.6
+tqdm>=4.64
+psutil>=5.9
+thop>=0.1.1
+gitpython>=3.1.30
+ultralytics==8.2.34
+setuptools<81
+
+# --- Web 服务 ---
+Flask>=2.2,<3.1
+Werkzeug>=2.2,<3.1

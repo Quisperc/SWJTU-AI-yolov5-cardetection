@@ -1,149 +1,146 @@
-import os
-import cv2
-import torch
+# -*- coding: utf-8 -*-
+"""本地 CLI / GUI 检测入口。
+
+用法（在项目根目录执行）：
+    python test.py                          # 弹出文件选择框，逐张/逐段处理
+    python test.py input/demo.jpg           # 直接检测单张图片
+    python test.py input/demo.mp4 -o output/result.mp4
+    python test.py input/demo.jpg --no-gui  # 无桌面环境：不弹窗，只保存结果
+
+改动说明（相对历史版本）：
+    - 推理逻辑统一交给 detector.py，删除重复的预处理 / NMS / 标注实现；
+    - 修正旧版把图片直接拉伸到 640x640 导致检测框偏移的问题；
+    - 权重、设备、阈值改为可配置，不再硬编码 models/exp4.pt 与 GPU 0；
+    - 新增命令行参数与 --no-gui，保证无图形界面的机器上也能跑。
+"""
+from __future__ import annotations
+
+import argparse
 from pathlib import Path
-import sys
-from tkinter import Tk, filedialog, messagebox
 
-# 添加 yolov5 路径到 Python 搜索路径
-current_dir = os.path.dirname(os.path.abspath(__file__))
-yolov5_path = os.path.join(current_dir, 'yolov5')
-sys.path.append(yolov5_path)
+import cv2
 
-from yolov5.utils.general import non_max_suppression, scale_boxes, check_img_size
-from yolov5.utils.plots import Annotator
-from yolov5.utils.torch_utils import select_device
-from yolov5.models.common import DetectMultiBackend
+import config
+import detector
 
-def load_model(weights_path, device):
-    """加载YOLO模型"""
-    model = DetectMultiBackend(weights_path, device=device)
-    model.eval()  # 设置为评估模式
-    return model
+IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+VIDEO_EXTS = {".mp4"}
 
-def process_image(model, img_path, imgsz=640):
-    """处理图像并显示结果"""
-    img = cv2.imread(img_path)
+
+def _imshow(title: str, img, show_gui: bool) -> bool:
+    """返回 False 表示用户按 Q 或关闭窗口，需要中止处理。"""
+    if not show_gui:
+        return True
+    cv2.imshow(title, img)
+    if cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE) < 1:
+        return False
+    return not (cv2.waitKey(1) & 0xFF == ord("q"))
+
+
+def process_image(model, img_path: Path, out_path: Path | None, show_gui: bool) -> Path:
+    img = cv2.imread(str(img_path))
     if img is None:
-        raise ValueError(f"Image not found: {img_path}")
+        raise ValueError(f"无法读取图片：{img_path}")
+    result = detector.detect_frame(model, img)
+    out_path = out_path or (config.OUTPUT_DIR / img_path.name)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out_path), result)
+    print(f"[完成] 图片结果: {out_path}")
+    _imshow("Result", result, show_gui)
+    if show_gui:
+        cv2.waitKey(0)
+    return out_path
 
-    orig_h, orig_w = img.shape[:2]
-    imgsz = check_img_size(imgsz, s=model.stride)
-    img_resized = cv2.resize(img, (imgsz, imgsz))
 
-    img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).float().div(255.0).unsqueeze(0).to(model.device)
-    pred = model(img_tensor)
-    pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)
-
-    annotator = Annotator(img, line_width=2)
-    if pred[0] is not None and len(pred[0]):
-        pred[0] = scale_boxes((imgsz, imgsz), pred[0], (orig_h, orig_w)).round()
-        for *xyxy, conf, cls in pred[0]:
-            label = f'{model.names[int(cls)]} {conf:.2f}'
-            annotator.box_label(xyxy, label, color=(255, 0, 0))
-
-    result_img = annotator.result()
-    cv2.imshow("Result", result_img)
-    while True:
-        # 检测窗口是否被关闭
-        if cv2.getWindowProperty("Result", cv2.WND_PROP_VISIBLE) < 1:
-            break
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # 按 Q 关闭
-            break
-    cv2.destroyAllWindows()
-
-def process_video(model, video_path, output_path, imgsz=640):
-    """处理视频并保存结果"""
-    cap = cv2.VideoCapture(video_path)
+def process_video(model, video_path: Path, out_path: Path | None, show_gui: bool) -> Path:
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        raise ValueError(f"Unable to open video: {video_path}")
+        raise ValueError(f"无法打开视频：{video_path}")
 
-    # 获取输入视频的属性
-    fps = int(cap.get(cv2.CAP_PROP_FPS))  # 视频帧率
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # 帧宽度
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # 帧高度
-    frame_size = (width, height)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    out_path = out_path or (config.OUTPUT_DIR / video_path.name)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 
-    # 初始化视频写入器
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 使用 MP4 编码器
-    out = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
+    frame_no = 0
+    try:
+        while cap.isOpened():
+            ok, frame = cap.read()
+            if not ok:
+                break
+            result = detector.detect_frame(model, frame)
+            writer.write(result)
+            frame_no += 1
+            if not _imshow("Result", result, show_gui):
+                print("[提示] 用户中止处理")
+                break
+    finally:
+        cap.release()
+        writer.release()
+        if show_gui:
+            try:
+                cv2.destroyAllWindows()
+            except cv2.error:  # 无桌面 / headless OpenCV 下忽略
+                pass
+    print(f"[完成] 视频结果: {out_path}（共 {frame_no} 帧）")
+    return out_path
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
 
-        orig_h, orig_w = frame.shape[:2]
-        imgsz = check_img_size(imgsz, s=model.stride)
-        img_resized = cv2.resize(frame, (imgsz, imgsz))
+def _pick_file() -> Path | None:
+    """无命令行参数时弹出系统文件选择框（仅在有桌面环境时可用）。"""
+    from tkinter import Tk, filedialog
 
-        img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).float().div(255.0).unsqueeze(0).to(model.device)
-        pred = model(img_tensor)
-        pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)
+    root = Tk()
+    root.withdraw()
+    path = filedialog.askopenfilename(
+        title="选择图片或视频文件",
+        filetypes=[("图片/视频", "*.jpg *.jpeg *.png *.mp4"), ("所有文件", "*.*")],
+    )
+    root.destroy()
+    return Path(path) if path else None
 
-        annotator = Annotator(frame, line_width=2)
-        if pred[0] is not None and len(pred[0]):
-            pred[0] = scale_boxes((imgsz, imgsz), pred[0], (orig_h, orig_w)).round()
-            for *xyxy, conf, cls in pred[0]:
-                label = f'{model.names[int(cls)]} {conf:.2f}'
-                annotator.box_label(xyxy, label, color=(255, 0, 0))
-
-        out.write(annotator.result())  # 写入处理后的帧
-        cv2.imshow("Result", annotator.result())
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # 按 Q 退出
-            break
-
-    cap.release()
-    out.release()
-    cv2.destroyAllWindows()
 
 def main():
-    # 配置模型权重和设备
-    weights_path = 'models/exp4.pt'  # 替换为你的权重文件路径
-    device = select_device('0')  # 默认使用 GPU 0
+    parser = argparse.ArgumentParser(description="YOLOv5 车辆检测（本地图片 / 视频）")
+    parser.add_argument("path", nargs="?", help="待检测文件或目录；不传则弹出选择框")
+    parser.add_argument("-o", "--output", help="结果保存路径")
+    parser.add_argument("--no-gui", action="store_true", help="不弹窗，仅保存结果（无桌面环境）")
+    args = parser.parse_args()
 
-    # 加载模型
-    model = load_model(weights_path, device)
+    config.ensure_runtime_dirs()
+    model = detector.load_model()
+    show_gui = not args.no_gui
 
-    while True:
-        # 弹出文件选择器
-        Tk().withdraw()  # 隐藏主窗口
-        file_path = filedialog.askopenfilename(title="选择图像或视频文件", filetypes=[
-            ("Image files", "*.jpg;*.jpeg;*.png"),
-            ("Video files", "*.mp4"),
-            ("All files", "*.*")
-        ])
+    if args.path:
+        target = Path(args.path)
+        if not target.is_absolute():
+            target = config.ROOT / target
+        files = sorted(
+            p for p in target.rglob("*") if p.suffix.lower() in IMAGE_EXTS | VIDEO_EXTS
+        ) if target.is_dir() else [target]
+        if not files:
+            parser.error(f"未找到可处理的文件：{target}")
+    else:
+        picked = _pick_file()
+        if picked is None:
+            print("未选择文件，已退出。")
+            return
+        files = [picked]
 
-        if not file_path:
-            print("未选择文件，程序退出。")
-            break
+    out = Path(args.output) if args.output else None
+    if out and not out.is_absolute():
+        out = config.ROOT / out
 
-        if not os.path.exists(file_path):
-            print(f"文件路径无效: {file_path}")
-            continue
-
-        # 处理文件
-        if file_path.lower().endswith(('jpg', 'jpeg', 'png')):
-            process_image(model, file_path)
-        elif file_path.lower().endswith('mp4'):
-            save_path = filedialog.asksaveasfilename(title="保存视频文件", defaultextension=".mp4",
-                                                     filetypes=[("MP4 files", "*.mp4")])
-            if save_path:
-                process_video(model, file_path, save_path)
-            else:
-                print("未选择保存路径，跳过。")
+    for file in files:
+        config.require_file(file, "请检查路径是否正确")
+        print(f"[处理] {file}")
+        if file.suffix.lower() in IMAGE_EXTS:
+            process_image(model, file, out, show_gui)
         else:
-            print("不支持的文件类型，请选择图片或视频文件！")
+            process_video(model, file, out, show_gui)
 
-        # 弹窗询问用户是否继续
-        root = Tk()
-        root.withdraw()
-        cont = messagebox.askyesno("继续处理", "是否继续处理其他文件？")
-        root.destroy()
 
-        if not cont:
-           print("程序结束。")
-           break
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
